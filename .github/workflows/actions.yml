@@ -50,6 +50,7 @@ jobs:
           pip install git+https://github.com/jonisb/jsbc.compat.git#egg=jsbc.compat
           pip install git+https://github.com/jonisb/Toolbox.git#egg=jsbc.Toolbox
           pip install git+https://github.com/jonisb/jsbc.network.git#egg=jsbc.network
+          pip install git+https://github.com/jonisb/jsbc.KodiLib.git#egg=jsbc.KodiLib
       - run: 7z x public/kodi-19.0-Matrix-x64.exe -oTestInstall/Kodi19_64bit
       - run: dir TestInstall
       - run: dir TestInstall/Kodi19_64bit
