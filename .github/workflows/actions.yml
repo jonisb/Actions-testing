@@ -43,7 +43,7 @@ jobs:
       - run: dir public
       - run: 7z x public/kodi-19.0-Matrix-x64.exe
       - run: dir
-      - name: Test with pytest
+      - name: Run Kodi
         run: |
           python runkodi.py
       - name: Upload log file
