@@ -35,6 +35,7 @@ jobs:
           path: public/kodi-19.0-Matrix-x64.exe
           key: ${{ runner.os }}-build-${{ env.cache-name }}-kodi-19.0-Matrix-x64.exe
       - uses: suisei-cn/actions-download-file@v1
+        if: hashFiles('public/kodi-19.0-Matrix-x64.exe') == ''
         id: downloadfile  # Remember to give an ID if you need the output filename
         name: Download the file
         with:
