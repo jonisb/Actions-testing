@@ -8,6 +8,8 @@ logger = logging.getLogger(__name__)
 
 def SetupKodi(cls):
     logger.debug("SetupKodi starting")
+    Version = cls.Version
+    Bitness = cls.Bitness
     KodiDir = SetupDir / 'Kodi{0}_{1}'.format(Version, Bitness)
     logger.debug("SetupKodi ending")
     return KodiDir
@@ -126,9 +128,13 @@ def StopKodi(cls):
     cls.KodiProc.wait()
 
 class base():
-    pass
+    Version = '19'
+    Bitness = '64bit'
 
 cls = base()
+
+CacheDir = pathlib.Path('.')
+SetupDir = CacheDir / "TestInstall"
 
 StartKodi(cls)
 time.sleep(10)
