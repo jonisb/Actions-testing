@@ -108,6 +108,7 @@ def RunKodi(KodiDir):
 
 
 def ConnectKodi():
+    settings['client']['network']['jsonrpc']['enabled'] = True
     logger.debug("ConnectKodi starting")
     Kodi = KodiLib.kodi()
     Kodi.connect()
