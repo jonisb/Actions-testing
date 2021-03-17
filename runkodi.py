@@ -8,7 +8,7 @@ logging.basicConfig(filename='debug.log', filemode='w', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 from jsbc.compat.urllib.urlparse import urlparse
 from jsbc.Toolbox import DefaultSettings, settings
-from jsbc.KodiLib import KodiLib
+from jsbc import KodiLib
 from jsbc.KodiLib.KodiInfo import KodiInfo
 
 settingsDefaults = [
