@@ -8,6 +8,7 @@ logging.basicConfig(filename='debug.log', filemode='w', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 from jsbc.compat.urllib.urlparse import urlparse
 from jsbc.Toolbox import DefaultSettings, settings
+from jsbc.KodiLib import KodiLib
 from jsbc.KodiLib.KodiInfo import KodiInfo
 
 settingsDefaults = [
@@ -106,6 +107,14 @@ def RunKodi(KodiDir):
     return subprocess.Popen(KodiCmd)
 
 
+def ConnectKodi():
+    logger.debug("ConnectKodi starting")
+    Kodi = KodiLib.kodi()
+    Kodi.connect()
+    logger.debug("ConnectKodi ending")
+    return Kodi
+
+
 def StartKodi(cls):
     logger.debug("StartKodi starting")
     KodiDir = SetupKodi(cls)
@@ -113,7 +122,7 @@ def StartKodi(cls):
     logger.debug("RunKodi: %s", cls.KodiProc.poll())
     #ssdp.waitForDevice(id=UUID[cls.Version][cls.Bitness])
     time.sleep(10)
-    #cls.Kodi = ConnectKodi()
+    cls.Kodi = ConnectKodi()
     logger.debug("StartKodi ending")
 
 
