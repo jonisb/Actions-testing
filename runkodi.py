@@ -8,7 +8,10 @@ logger = logging.getLogger(__name__)
 
 def SetupKodi(cls):
     logger.debug("SetupKodi starting")
-    '''
+    logger.debug("SetupKodi ending")
+    return pathlib.Path('.')
+    return KodiDir
+'''
     Version = cls.Version
     Bitness = cls.Bitness
     KodiInfo = cls.KodiInfo
@@ -99,10 +102,7 @@ def SetupKodi(cls):
 """.format(UUID[str(Version)][Bitness])
         dstdir.write_text(upnpserver, 'utf-8')
 
-    '''
-    logger.debug("SetupKodi ending")
-    return pathlib.Path('.')
-    return KodiDir
+'''
 
 
 def RunKodi(KodiDir):
