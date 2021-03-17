@@ -48,7 +48,7 @@ jobs:
       - name: Run Kodi
         run: |
           python runkodi.py
-      - name: Upload log file
+      - name: Upload log files
         uses: actions/upload-artifact@v2
         with:
           path: |
