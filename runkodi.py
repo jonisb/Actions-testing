@@ -1,5 +1,6 @@
 import subprocess
 import time
+import requests
 import pathlib
 import logging
 logging.basicConfig(filename='debug.log', filemode='w', level=logging.DEBUG)
