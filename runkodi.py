@@ -1,6 +1,7 @@
 import subprocess
 import time
 import requests
+from bs4 import BeautifulSoup
 import pathlib
 import logging
 logging.basicConfig(filename='debug.log', filemode='w', level=logging.DEBUG)
