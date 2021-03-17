@@ -7,6 +7,7 @@ import logging
 logging.basicConfig(filename='debug.log', filemode='w', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 from jsbc.compat.urllib.urlparse import urlparse
+from jsbc.Toolbox import DefaultSettings, settings
 from jsbc.KodiLib.KodiInfo import KodiInfo
 
 
@@ -120,6 +121,8 @@ class base():
 
 cls = base()
 
+DefaultSettings(settingsDefaults)
+UUID = settings['servers']
 CacheDir = pathlib.Path('.')
 SetupDir = CacheDir / "TestInstall"
 
