@@ -4,6 +4,7 @@ import pathlib
 import logging
 logging.basicConfig(filename='debug.log', filemode='w', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+from jsbc.compat.urllib.urlparse import urlparse
 from jsbc.KodiLib.KodiInfo import KodiInfo
 
 
