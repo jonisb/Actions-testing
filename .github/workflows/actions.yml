@@ -21,6 +21,6 @@ jobs:
       with:
         url: "https://mirrors.kodi.tv/releases/windows/win64/kodi-19.0-Matrix-x64.exe"
         target: public/
-    - run: dir public/
+    - run: dir public
     - run: 7z x public/kodi-19.0-Matrix-x64.exe
     - run: dir
