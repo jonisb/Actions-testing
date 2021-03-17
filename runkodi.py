@@ -21,17 +21,14 @@ def SetupKodi(cls):
         response = requests.get(URL)
         filename.write_bytes(response.content)
         del response
+    dstdir = KodiDir / 'portable_data'
+    if not KodiDir.exists():
+        SevenZip = ['7z.exe', 'x', '-y', str(filename), '-o{KodiDir}'.format(KodiDir=KodiDir)]
+        proc = subprocess.call(SevenZip, stdout=subprocess.PIPE)
+    logger.debug("SetupKodi KodiDir.exists() = %s", KodiDir.exists())
     logger.debug("SetupKodi ending")
     return KodiDir
 
-    dstdir = KodiDir / 'portable_data'
-    #if not dstdir.exists():
-    if not KodiDir.exists():
-        #SevenZip = ['7z.exe', 'x', '-y', str(filename), f'-o{KodiDir}']
-        SevenZip = ['7z.exe', 'x', '-y', str(filename), '-o{KodiDir}'.format(KodiDir=KodiDir)]
-        #proc = subprocess.run(SevenZip, stdout=subprocess.PIPE)
-        proc = subprocess.call(SevenZip, stdout=subprocess.PIPE)
-    logger.debug("SetupKodi KodiDir.exists() = %s", KodiDir.exists())
 
     dstdir = dstdir / r"userdata\guisettings.xml"
     if not dstdir.exists():
