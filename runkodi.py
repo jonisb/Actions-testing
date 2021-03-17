@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 
 def SetupKodi(cls):
     logger.debug("SetupKodi starting")
+    KodiDir = SetupDir / 'Kodi{0}_{1}'.format(Version, Bitness)
     logger.debug("SetupKodi ending")
-    return pathlib.Path('.')
     return KodiDir
 
     Version = cls.Version
