@@ -67,19 +67,8 @@ def SetupKodi(cls):
             dstdir.write_text(unicode(guisettings), 'utf-8')
         except NameError:
             dstdir.write_text(str(guisettings), 'utf-8')
-    logger.debug("SetupKodi ending")
-    return KodiDir
-
-
-
-    #dstdir = KodiDir / 'portable_data' / r"userdata\upnpserver.xml"
     dstdir = KodiDir / 'portable_data' / "userdata/upnpserver.xml"
     if not dstdir.exists():
-    #      upnpserver =  f"""\
-#  <upnpserver>
-    #  <UUIDRenderer>{UUID[Version][Bitness]}</UUIDRenderer>
-#  </upnpserver>
-#  """
         try:
             UUID[str(Version)]
         except KeyError:
@@ -97,8 +86,9 @@ def SetupKodi(cls):
 </upnpserver>
 """.format(UUID[str(Version)][Bitness])
         dstdir.write_text(upnpserver, 'utf-8')
+    logger.debug("SetupKodi ending")
 
-
+    return KodiDir
 
 
 def RunKodi(KodiDir):
