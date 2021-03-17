@@ -51,10 +51,6 @@ jobs:
       - name: Upload log file
         uses: actions/upload-artifact@v2
         with:
-          name: kodi.log
-          path: portable_data\kodi.log
-      - name: Upload debug log
-        uses: actions/upload-artifact@v2
-        with:
-          name: debug.log
-          path: debug.log
+          path: |
+          	portable_data\kodi.log
+          	debug.log
