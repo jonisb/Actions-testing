@@ -26,10 +26,6 @@ def SetupKodi(cls):
         SevenZip = ['7z.exe', 'x', '-y', str(filename), '-o{KodiDir}'.format(KodiDir=KodiDir)]
         proc = subprocess.call(SevenZip, stdout=subprocess.PIPE)
     logger.debug("SetupKodi KodiDir.exists() = %s", KodiDir.exists())
-    logger.debug("SetupKodi ending")
-    return KodiDir
-
-
     dstdir = dstdir / r"userdata\guisettings.xml"
     if not dstdir.exists():
         dstdir.parent.mkdir(parents=True, exist_ok=True)
@@ -66,11 +62,14 @@ def SetupKodi(cls):
             tag['id'] = "services.upnp"
             tag.string = 'true'
             guisettings.settings.append(tag)
-        #dstdir.write_text(str(guisettings), 'utf-8')
         try:
             dstdir.write_text(unicode(guisettings), 'utf-8')
         except NameError:
             dstdir.write_text(str(guisettings), 'utf-8')
+    logger.debug("SetupKodi ending")
+    return KodiDir
+
+
 
     #dstdir = KodiDir / 'portable_data' / r"userdata\upnpserver.xml"
     dstdir = KodiDir / 'portable_data' / "userdata/upnpserver.xml"
