@@ -30,18 +30,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ matrix.architecture }}-
             ${{ runner.os }}-pip-
-      - name: Cache download
-        uses: actions/cache@v2
-        with:
-          path: public/kodi-19.0-Matrix-x64.exe
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-kodi-19.0-Matrix-x64.exe
-      - uses: suisei-cn/actions-download-file@v1
-        if: hashFiles('public/kodi-19.0-Matrix-x64.exe') == ''
-        id: downloadfile  # Remember to give an ID if you need the output filename
-        name: Download the file
-        with:
-          url: "https://mirrors.kodi.tv/releases/windows/win64/kodi-19.0-Matrix-x64.exe"
-          target: public/
       - name: Install dependencies
         run: |
           pip install wheel
@@ -58,5 +46,5 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           path: |
-            portable_data\kodi.log
+            TestInstall\Kodi19_64bit\portable_data\kodi.log
             debug.log
