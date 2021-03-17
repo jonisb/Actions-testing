@@ -15,12 +15,23 @@ jobs:
         architecture: ['x64']
 
     steps:
-    - uses: suisei-cn/actions-download-file@v1
-      id: downloadfile  # Remember to give an ID if you need the output filename
-      name: Download the file
-      with:
-        url: "https://mirrors.kodi.tv/releases/windows/win64/kodi-19.0-Matrix-x64.exe"
-        target: public/
-    - run: dir public
-    - run: 7z x public/kodi-19.0-Matrix-x64.exe
-    - run: dir
+      - name: Cache download
+        uses: actions/cache@v2
+        with:
+          path: public/kodi-19.0-Matrix-x64.exe
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-kodi-19.0-Matrix-x64.exe
+      - uses: suisei-cn/actions-download-file@v1
+        id: downloadfile  # Remember to give an ID if you need the output filename
+        name: Download the file
+        with:
+          url: "https://mirrors.kodi.tv/releases/windows/win64/kodi-19.0-Matrix-x64.exe"
+          target: public/
+      - run: dir public
+      - run: 7z x public/kodi-19.0-Matrix-x64.exe
+      - run: dir
+      - run: kodi -p
+      - name: Upload log file
+        uses: actions/upload-artifact@v2
+        with:
+          name: kodi.log
+          path: portable_data\kodi.log
