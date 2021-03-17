@@ -10,6 +10,15 @@ from jsbc.compat.urllib.urlparse import urlparse
 from jsbc.Toolbox import DefaultSettings, settings
 from jsbc.KodiLib.KodiInfo import KodiInfo
 
+settingsDefaults = [
+    ('client', [
+        ('name', 'KodiLib.testing'),
+    ]),
+    ('servers', [
+        (str, []),
+    ]),
+]
+
 
 def SetupKodi(cls):
     logger.debug("SetupKodi starting")
