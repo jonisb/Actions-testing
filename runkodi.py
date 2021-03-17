@@ -15,6 +15,24 @@ from jsbc.KodiLib.KodiInfo import KodiInfo
 settingsDefaults = [
     ('client', [
         ('name', 'KodiLib.testing'),
+        ('network', [
+            ('jsonrpc', [
+                ('enabled', False),
+                ('buffersize', 4096),
+                ('timeout', 1),
+                ('retrys', 10),
+                ('notifications', [
+                    ('enabled', False),
+                ]),
+            ]),
+        ]),
+    ]),
+    ('server', [
+        ('network', [
+            ('tcp', [
+                ('port', 9090)
+            ]),
+        ]),
     ]),
     ('servers', [
         (str, []),
