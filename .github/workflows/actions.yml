@@ -29,7 +29,7 @@ jobs:
       - run: dir public
       - run: 7z x public/kodi-19.0-Matrix-x64.exe
       - run: dir
-      - run: kodi -p
+      - run: ./kodi.exe -p
       - name: Upload log file
         uses: actions/upload-artifact@v2
         with:
