@@ -4,28 +4,23 @@ import pathlib
 import logging
 logging.basicConfig(filename='debug.log', filemode='w', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+from jsbc.KodiLib.KodiInfo import KodiInfo
 
 
 def SetupKodi(cls):
     logger.debug("SetupKodi starting")
     Version = cls.Version
     Bitness = cls.Bitness
-    KodiDir = SetupDir / 'Kodi{0}_{1}'.format(Version, Bitness)
-    logger.debug("SetupKodi ending")
-    return KodiDir
-
-    Version = cls.Version
-    Bitness = cls.Bitness
     KodiInfo = cls.KodiInfo
     URL = KodiInfo['build'][Bitness]['URL']
-
-    #KodiDir = SetupDir / f'Kodi{Version}_{Bitness}'
     KodiDir = SetupDir / 'Kodi{0}_{1}'.format(Version, Bitness)
     filename = CacheDir / pathlib.Path(urlparse(URL).path).name
     if not filename.exists():
         response = requests.get(URL)
         filename.write_bytes(response.content)
         del response
+    logger.debug("SetupKodi ending")
+    return KodiDir
 
     dstdir = KodiDir / 'portable_data'
     #if not dstdir.exists():
@@ -127,9 +122,12 @@ def StopKodi(cls):
     cls.KodiProc.terminate()
     cls.KodiProc.wait()
 
+
 class base():
     Version = '19'
     Bitness = '64bit'
+    KodiInfo = KodiInfo()[Version]
+
 
 cls = base()
 
