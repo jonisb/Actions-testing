@@ -124,7 +124,7 @@ def StopKodi(cls):
 
 
 class base():
-    Version = '19'
+    Version = 19
     Bitness = '64bit'
     KodiInfo = KodiInfo()[Version]
 
