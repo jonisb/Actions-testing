@@ -1,1 +1,2 @@
+semantic-version
 beautifulsoup4
