@@ -143,7 +143,7 @@ def ConnectKodi():
         logger.exception('connect: %s, %s', '127.0.0.1', 9090)
         import urllib.request
         try:
-            with urllib.request.urlopen('127.0.0.1:8080') as f:
+            with urllib.request.urlopen('http://127.0.0.1:8080') as f:
                 logger.debug("http: %s", f.read(300))
         except Exception:
             raise
