@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 from jsbc.compat.urllib.urlparse import urlparse
 from jsbc.Toolbox import DefaultSettings, settings
 from jsbc import KodiLib
-from jsbc.KodiLib import jsonrpc
+#from jsbc.KodiLib import jsonrpc
 from jsbc.KodiLib.KodiInfo import KodiInfo
 
 settingsDefaults = [
