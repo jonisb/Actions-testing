@@ -150,7 +150,7 @@ def StartKodi(cls):
     cls.KodiProc = RunKodi(KodiDir)
     logger.debug("RunKodi: %s", cls.KodiProc.poll())
     #ssdp.waitForDevice(id=UUID[cls.Version][cls.Bitness])
-    time.sleep(10)
+    time.sleep(30)
     cls.Kodi = ConnectKodi()
     logger.debug("StartKodi ending")
 
