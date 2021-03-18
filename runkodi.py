@@ -69,6 +69,8 @@ def SetupKodi(cls):
     <services>
         <upnprenderer>true</upnprenderer>
         <upnpannounce>false</upnpannounce>
+        <webserver>true</webserver>
+        <webserverauthentication>false</webserverauthentication>
     </services>
     <viewstates>
     </viewstates>
@@ -139,7 +141,11 @@ def ConnectKodi():
         _socket.connect(('127.0.0.1', 9090))
     except Exception:
         logger.exception('connect: %s, %s', '127.0.0.1', 9090)
-        raise
+        try:
+            _socket.connect(('127.0.0.1', 8080))
+        except Exception:
+            logger.exception('connect: %s, %s', '127.0.0.1', 8080)
+            raise
     logger.debug("ConnectKodi ending")
     return Kodi
 
