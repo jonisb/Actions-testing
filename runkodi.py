@@ -138,7 +138,7 @@ def ConnectKodi():
     try:
         _socket.connect(('127.0.0.1', 9090))
     except Exception:
-        logger.exception('connect: %s, %s', self.settings['server']['network']['ip'], self.settings['server']['network']['tcp']['port'])
+        logger.exception('connect: %s, %s', '127.0.0.1', 9090)
         raise
     logger.debug("ConnectKodi ending")
     return Kodi
