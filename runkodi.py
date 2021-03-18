@@ -128,10 +128,17 @@ def RunKodi(KodiDir):
 
 def ConnectKodi():
     logger.debug("settings: %s", settings.export(True))
-    settings['client']['network']['jsonrpc']['enabled'] = True
+    #settings['client']['network']['jsonrpc']['enabled'] = True
     logger.debug("ConnectKodi starting")
-    Kodi = KodiLib.kodi()
-    Kodi.connect()
+    #Kodi = KodiLib.kodi()
+    #Kodi.connect()
+    _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    _socket.settimeout(30)
+    try:
+        _socket.connect(('127.0.0.1', 9090))
+    except Exception:
+        logger.exception('connect: %s, %s', self.settings['server']['network']['ip'], self.settings['server']['network']['tcp']['port'])
+        raise
     logger.debug("ConnectKodi ending")
     return Kodi
 
