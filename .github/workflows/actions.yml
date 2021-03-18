@@ -39,6 +39,9 @@ jobs:
           pip install git+https://github.com/jonisb/Toolbox.git#egg=jsbc.Toolbox
           pip install git+https://github.com/jonisb/jsbc.network.git#egg=jsbc.network
           pip install git+https://github.com/jonisb/jsbc.KodiLib.git#egg=jsbc.KodiLib
+      - name: Run test.py
+        run: |
+          python test.py
       - name: Run Kodi
         run: |
           python runkodi.py
