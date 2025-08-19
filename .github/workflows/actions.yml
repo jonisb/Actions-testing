@@ -47,7 +47,7 @@ jobs:
           python runkodi.py
       - name: Upload log files
         if: failure()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           path: |
             TestInstall\Kodi19_64bit\portable_data\kodi.log
