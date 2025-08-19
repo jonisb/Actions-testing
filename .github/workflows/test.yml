@@ -28,7 +28,7 @@ jobs:
     - name: Install Xvfb, Kodi, and PulseAudio
       run: |
         sudo apt-get update
-        sudo apt-get install -y xvfb software-properties-common curl pulseaudio-utils
+        sudo apt-get install -y xvfb software-properties-common curl pulseaudio pulseaudio-utils
         sudo add-apt-repository -y ppa:team-xbmc/ppa
         sudo apt-get update
         sudo apt-get install -y kodi
@@ -75,8 +75,31 @@ jobs:
     - name: Start PulseAudio and Kodi
       run: |
         export DISPLAY=:99
-        pulseaudio --start --exit-idle-time=-1
+        # Verify pulseaudio installation
+        if ! command -v pulseaudio &> /dev/null; then
+          echo "Error: pulseaudio command not found"
+          dpkg -l | grep pulseaudio || true
+          exit 1
+        fi
+        # Start PulseAudio with verbose logging
+        pulseaudio --start --exit-idle-time=-1 --verbose > pulseaudio.log 2>&1 &
+        PULSEAUDIO_PID=$!
+        sleep 5  # Give PulseAudio time to start
+        # Verify PulseAudio is running
+        if ! ps aux | grep -q "[p]ulseaudio"; then
+          echo "PulseAudio failed to start"
+          cat pulseaudio.log
+          exit 1
+        fi
+        # Create null sink
         pactl load-module module-null-sink sink_name=dummy
+        # Verify null sink
+        if ! pactl list sinks | grep -q "Name: dummy"; then
+          echo "Failed to create PulseAudio null sink"
+          pactl list sinks
+          cat pulseaudio.log
+          exit 1
+        fi
         if ss -tuln | grep :8080; then
           echo "Port 8080 is in use, killing processes"
           sudo fuser -k 8080/tcp || true
@@ -99,6 +122,7 @@ jobs:
         if ! curl -s -f -X POST -H "Content-Type: application/json" --data "{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}" http://localhost:8080/jsonrpc | grep -q "pong"; then
           echo "Kodi failed to start after retries"
           cat ~/.kodi/temp/kodi.log
+          cat pulseaudio.log
           exit 1
         fi
 
