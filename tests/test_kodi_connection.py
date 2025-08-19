@@ -3,7 +3,7 @@ import requests
 import json
 
 # Kodi JSON-RPC endpoint (assuming default setup in CI)
-KODI_URL = "http://localhost:8080/jsonrpc"
+KODI_URL = "http://localhost:9090/jsonrpc"
 
 def send_jsonrpc_request(method, params=None):
     """Helper function to send a JSON-RPC request to Kodi."""

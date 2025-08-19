@@ -28,7 +28,7 @@ jobs:
     - name: Install Xvfb and Kodi
       run: |
         sudo apt-get update
-        sudo apt-get install -y xvfb software-properties-common
+        sudo apt-get install -y xvfb software-properties-common curl
         sudo add-apt-repository -y ppa:team-xbmc/ppa
         sudo apt-get update
         sudo apt-get install -y kodi
@@ -49,10 +49,17 @@ jobs:
           <videohardware>
             <usevaapi>false</usevaapi>
             <usevdpau>false</usevdpau>
-            <useopengl>true</useopengl>
+            <useopengl>false</useopengl>
             <useswrenderer>true</useswrenderer>
+            <usedxva2>false</usedxva2>
+            <usevda>false</usevda>
+            <usevideotoolbox>false</usevideotoolbox>
           </videohardware>
-          <loglevel>1</loglevel>
+          <gui>
+            <algorithmdirtyregions>0</algorithmdirtyregions>
+            <nofliptimeout>0</nofliptimeout>
+          </gui>
+          <loglevel>2</loglevel>
         </advancedsettings>
         EOF
         chmod 644 ~/.kodi/userdata/*.xml
@@ -65,13 +72,32 @@ jobs:
     - name: Start Kodi in background
       run: |
         export DISPLAY=:99
-        kodi --standalone &
-        timeout 60 bash -c 'until curl -s http://localhost:8080/jsonrpc >/dev/null; do
-          echo "Waiting for Kodi to start..."
-          ps aux | grep kodi || true
-          sleep 5
-        done' || { echo "Kodi failed to start within 60 seconds"; cat ~/.kodi/temp/kodi.log; exit 1; }
-        echo "Kodi is ready!"
+        # Check if port 8080 is in use
+        if ss -tuln | grep :8080; then
+          echo "Port 8080 is in use, killing processes"
+          sudo fuser -k 8080/tcp || true
+        fi
+        # Try starting Kodi with retries
+        for attempt in {1..2}; do
+          echo "Starting Kodi (attempt $attempt)"
+          kodi --standalone &
+          KODI_PID=$!
+          timeout 90 bash -c 'until curl -s -f -X POST -H "Content-Type: application/json" --data "{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}" http://localhost:8080/jsonrpc | grep -q "pong"; do
+            echo "Waiting for Kodi to start..."
+            ps aux | grep kodi || true
+            cat ~/.kodi/temp/kodi.log || true
+            sleep 5
+          done' && { echo "Kodi is ready!"; break; } || {
+            echo "Kodi failed to start, killing process"
+            kill $KODI_PID || true
+            sleep 5
+          }
+        done
+        if ! curl -s -f -X POST -H "Content-Type: application/json" --data "{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}" http://localhost:8080/jsonrpc | grep -q "pong"; then
+          echo "Kodi failed to start after retries"
+          cat ~/.kodi/temp/kodi.log
+          exit 1
+        fi
 
     - name: Run tests
       run: |
@@ -81,7 +107,8 @@ jobs:
     - name: Debug test failure
       if: failure()
       run: |
-        curl -v http://localhost:8080/jsonrpc || true
+        curl -v -X POST -H "Content-Type: application/json" --data "{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}" http://localhost:8080/jsonrpc || true
         cat ~/.kodi/temp/kodi.log || true
+        ss -tuln | grep 8080 || true
         ps aux | grep kodi || true
         pkill kodi || true
