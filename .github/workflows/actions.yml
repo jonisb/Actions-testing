@@ -22,7 +22,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
       - name: Cache pip
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~\AppData\Local\pip\Cache # This path is specific to Windows
           # Look to see if there is a cache hit for the corresponding requirements file
