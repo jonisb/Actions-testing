@@ -25,10 +25,10 @@ jobs:
         pip install -r requirements.txt
         pip install pytest requests
 
-    - name: Install Xvfb and Kodi
+    - name: Install Xvfb, Kodi, and PulseAudio
       run: |
         sudo apt-get update
-        sudo apt-get install -y xvfb software-properties-common curl alsa-utils
+        sudo apt-get install -y xvfb software-properties-common curl pulseaudio-utils
         sudo add-apt-repository -y ppa:team-xbmc/ppa
         sudo apt-get update
         sudo apt-get install -y kodi
@@ -47,7 +47,7 @@ jobs:
         cat << EOF > ~/.kodi/userdata/advancedsettings.xml
         <advancedsettings>
           <audio>
-            <device>ALSA:dummy</device>
+            <device>PULSE:dummy</device>
           </audio>
           <videohardware>
             <usevaapi>false</usevaapi>
@@ -72,10 +72,11 @@ jobs:
         Xvfb :99 -screen 0 1024x768x24 &
         echo "DISPLAY=:99" >> $GITHUB_ENV
 
-    - name: Start Kodi in background
+    - name: Start PulseAudio and Kodi
       run: |
         export DISPLAY=:99
-        sudo modprobe snd-dummy  # Load dummy ALSA audio driver
+        pulseaudio --start --exit-idle-time=-1
+        pactl load-module module-null-sink sink_name=dummy
         if ss -tuln | grep :8080; then
           echo "Port 8080 is in use, killing processes"
           sudo fuser -k 8080/tcp || true
@@ -106,7 +107,8 @@ jobs:
         export DISPLAY=:99
         pytest tests/
 
-    - name: Stop Kodi (optional cleanup)
+    - name: Stop Kodi and PulseAudio (cleanup)
       if: always()
       run: |
         pkill kodi || true
+        pkill pulseaudio || true
