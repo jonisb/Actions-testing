@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # Switch to Jammy
 
     steps:
     - name: Checkout code
@@ -22,8 +22,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt  # Or use setup.py if applicable
-        pip install pytest  # If using pytest for tests; adjust as needed
+        pip install -r requirements.txt  # Or use setup.py
+        pip install pytest  # If using pytest; adjust as needed
 
     - name: Install Xvfb and Kodi
       run: |
@@ -41,13 +41,13 @@ jobs:
     - name: Start Kodi in background
       run: |
         export DISPLAY=:99
-        kodi --standalone &  # Runs Kodi in standalone mode
-        sleep 30  # Wait for Kodi to fully start (adjust based on logs/timing)
+        kodi --standalone &
+        sleep 30  # Adjust based on Kodi startup time
 
     - name: Run tests
       run: |
         export DISPLAY=:99
-        pytest tests/  # Or python -m unittest discover if using unittest
+        pytest tests/  # Or python -m unittest discover
 
     - name: Stop Kodi (optional cleanup)
       if: always()
