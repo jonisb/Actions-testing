@@ -28,7 +28,7 @@ jobs:
     - name: Install Xvfb and Kodi
       run: |
         sudo apt-get update
-        sudo apt-get install -y xvfb software-properties-common curl
+        sudo apt-get install -y xvfb software-properties-common curl alsa-utils
         sudo add-apt-repository -y ppa:team-xbmc/ppa
         sudo apt-get update
         sudo apt-get install -y kodi
@@ -46,6 +46,9 @@ jobs:
         EOF
         cat << EOF > ~/.kodi/userdata/advancedsettings.xml
         <advancedsettings>
+          <audio>
+            <device>ALSA:dummy</device>
+          </audio>
           <videohardware>
             <usevaapi>false</usevaapi>
             <usevdpau>false</usevdpau>
@@ -72,12 +75,11 @@ jobs:
     - name: Start Kodi in background
       run: |
         export DISPLAY=:99
-        # Check if port 8080 is in use
+        sudo modprobe snd-dummy  # Load dummy ALSA audio driver
         if ss -tuln | grep :8080; then
           echo "Port 8080 is in use, killing processes"
           sudo fuser -k 8080/tcp || true
         fi
-        # Try starting Kodi with retries
         for attempt in {1..2}; do
           echo "Starting Kodi (attempt $attempt)"
           kodi --standalone &
@@ -102,13 +104,9 @@ jobs:
     - name: Run tests
       run: |
         export DISPLAY=:99
-        pytest tests/ --verbose
+        pytest tests/
 
-    - name: Debug test failure
-      if: failure()
+    - name: Stop Kodi (optional cleanup)
+      if: always()
       run: |
-        curl -v -X POST -H "Content-Type: application/json" --data "{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}" http://localhost:8080/jsonrpc || true
-        cat ~/.kodi/temp/kodi.log || true
-        ss -tuln | grep 8080 || true
-        ps aux | grep kodi || true
         pkill kodi || true
