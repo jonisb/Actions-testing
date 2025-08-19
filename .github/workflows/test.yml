@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-22.04  # Use Jammy to avoid PPA issues
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout code
@@ -17,7 +17,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12'  # Adjust to your module's Python version
+        python-version: '3.12'
 
     - name: Install dependencies
       run: |
@@ -44,7 +44,18 @@ jobs:
           <setting id="services.useairplaypassword" default="true">false</setting>
         </settings>
         EOF
-        chmod 644 ~/.kodi/userdata/guisettings.xml
+        cat << EOF > ~/.kodi/userdata/advancedsettings.xml
+        <advancedsettings>
+          <videohardware>
+            <usevaapi>false</usevaapi>
+            <usevdpau>false</usevdpau>
+            <useopengl>true</useopengl>
+            <useswrenderer>true</useswrenderer>
+          </videohardware>
+          <loglevel>1</loglevel>
+        </advancedsettings>
+        EOF
+        chmod 644 ~/.kodi/userdata/*.xml
 
     - name: Start Xvfb
       run: |
@@ -55,20 +66,22 @@ jobs:
       run: |
         export DISPLAY=:99
         kodi --standalone &
-        until curl -s http://localhost:8080/jsonrpc >/dev/null; do
+        timeout 60 bash -c 'until curl -s http://localhost:8080/jsonrpc >/dev/null; do
           echo "Waiting for Kodi to start..."
+          ps aux | grep kodi || true
           sleep 5
-        done
+        done' || { echo "Kodi failed to start within 60 seconds"; cat ~/.kodi/temp/kodi.log; exit 1; }
         echo "Kodi is ready!"
 
     - name: Run tests
       run: |
         export DISPLAY=:99
-        pytest tests/
+        pytest tests/ --verbose
 
     - name: Debug test failure
       if: failure()
       run: |
         curl -v http://localhost:8080/jsonrpc || true
         cat ~/.kodi/temp/kodi.log || true
+        ps aux | grep kodi || true
         pkill kodi || true
