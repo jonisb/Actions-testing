@@ -42,6 +42,8 @@ jobs:
           <setting id="services.airplay" default="true">false</setting>
           <setting id="services.airplayvolumecontrol" default="true">true</setting>
           <setting id="services.useairplaypassword" default="true">false</setting>
+          # Disable add-on auto-updates to prevent downloads during startup
+          <setting id="general.addonupdates" default="true">0</setting>
         </settings>
         EOF
         cat << EOF > ~/.kodi/userdata/advancedsettings.xml
@@ -66,6 +68,8 @@ jobs:
         </advancedsettings>
         EOF
         chmod 644 ~/.kodi/userdata/*.xml
+        # Remove version check add-on to prevent update notifications and checks
+        sudo rm -rf /usr/share/kodi/addons/service.xbmc.versioncheck
 
     - name: Start Xvfb
       run: |
@@ -125,6 +129,8 @@ jobs:
           cat pulseaudio.log
           exit 1
         fi
+        # Add delay after ping succeeds to allow full initialization (e.g., avoid race with any remaining startup tasks)
+        sleep 20
 
     - name: Run tests
       run: |
