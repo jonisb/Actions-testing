@@ -9,6 +9,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        kodi-tag: [leia, matrix, nexus, omega]  # Test multiple Kodi versions
 
     steps:
     - name: Checkout code
@@ -25,11 +28,20 @@ jobs:
         pip install -r requirements.txt
         pip install pytest requests
 
-    - name: Install Docker
+    - name: Install Docker and resolve containerd conflicts
       run: |
+        # Clean up conflicting containerd packages
+        sudo apt-get update
+        sudo apt-get remove -y containerd containerd.io || true
+        sudo apt-get autoremove -y
+        sudo apt-get clean
+        # Install Docker
         sudo apt-get update
         sudo apt-get install -y docker.io
         sudo systemctl start docker
+        sudo systemctl enable docker
+        # Verify Docker is running
+        docker --version
 
     - name: Prepare Kodi config and run headless Docker
       run: |
@@ -46,31 +58,31 @@ jobs:
           <setting id="services.airplay" default="true">false</setting>
           <setting id="services.airplayvolumecontrol" default="true">true</setting>
           <setting id="services.useairplaypassword" default="true">false</setting>
-          <setting id="general.addonupdates" default="true">0</setting>  # Disable auto-updates
-          <setting id="audiooutput.audiodevice" default="true">ALSA:default</setting>  # Fallback audio device (headless ignores playback)
-          <setting id="audiooutput.passthrough" default="true">false</setting>  # Disable passthrough to avoid sink issues
+          <setting id="general.addonupdates" default="true">0</setting>
+          <setting id="audiooutput.audiodevice" default="true">ALSA:default</setting>
+          <setting id="audiooutput.passthrough" default="true">false</setting>
         </settings>
         EOF
         
-        # advancedsettings.xml: Logging only (no audio/video hardware tweaks needed in headless)
+        # advancedsettings.xml: Logging only
         cat << EOF > kodi-config/userdata/advancedsettings.xml
         <advancedsettings>
-          <loglevel>2</loglevel>  # Debug logging
+          <loglevel>2</loglevel>
         </advancedsettings>
         EOF
         
-        # Pull and run headless Kodi Docker
-        docker pull linuxserver/kodi-headless
+        # Pull and run headless Kodi Docker for specific version
+        docker pull matthuisman/kodi-headless:${{ matrix.kodi-tag }}
         docker run -d --name kodi-headless \
           -p 8080:8080 \
           -v $(pwd)/kodi-config:/config/.kodi \
           --restart=no \
-          linuxserver/kodi-headless
+          matthuisman/kodi-headless:${{ matrix.kodi-tag }}
         
-        # Remove version check add-on inside container to prevent notifications/delays
+        # Remove version check add-on
         docker exec kodi-headless rm -rf /app/kodi/addons/service.xbmc.versioncheck || true
         
-        # Wait for JSON-RPC to respond (increase timeout to 120s for slower starts)
+        # Wait for JSON-RPC to respond
         for attempt in {1..3}; do
           timeout 120 bash -c 'until curl -s -f -X POST -H "Content-Type: application/json" --data "{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}" http://localhost:8080/jsonrpc | grep -q "pong"; do
             echo "Waiting for Kodi to start (attempt $attempt)..."
@@ -84,7 +96,7 @@ jobs:
               -p 8080:8080 \
               -v $(pwd)/kodi-config:/config/.kodi \
               --restart=no \
-              linuxserver/kodi-headless
+              matthuisman/kodi-headless:${{ matrix.kodi-tag }}
             docker exec kodi-headless rm -rf /app/kodi/addons/service.xbmc.versioncheck || true
             sleep 5
           }
