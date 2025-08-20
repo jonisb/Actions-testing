@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        kodi-tag: [leia, matrix, nexus, omega] # Revert to simple codenames    
+        kodi-tag: [Leia, Matrix, Nexus, Omega] # Revert to simple codenames    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
