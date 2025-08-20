@@ -66,6 +66,8 @@ jobs:
         docker pull matthuisman/kodi-headless:${{ matrix.kodi-tag }}
         docker run -d --name kodi-headless \
           -p 8080:8080 \
+          -e PUID=$(id -u) \
+          -e PGID=$(id -g) \
           -v $(pwd)/kodi-config:/config/.kodi \
           --restart=no \
           matthuisman/kodi-headless:${{ matrix.kodi-tag }}
@@ -85,6 +87,8 @@ jobs:
             docker rm kodi-headless || true
             docker run -d --name kodi-headless \
               -p 8080:8080 \
+              -e PUID=$(id -u) \
+              -e PGID=$(id -g) \
               -v $(pwd)/kodi-config:/config/.kodi \
               --restart=no \
               matthuisman/kodi-headless:${{ matrix.kodi-tag }}
