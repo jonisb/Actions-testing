@@ -59,12 +59,12 @@ jobs:
         EOF
         
         # Pull and run headless Kodi Docker for specific version
-        docker pull matthuisman/kodi:${{ matrix.kodi-tag }}
+        docker pull matthuisman/kodi-headless:${{ matrix.kodi-tag }}
         docker run -d --name kodi-headless \
           -p 8080:8080 \
           -v $(pwd)/kodi-config:/config/.kodi \
           --restart=no \
-          matthuisman/kodi:${{ matrix.kodi-tag }}
+          matthuisman/kodi-headless:${{ matrix.kodi-tag }}
         
         # Remove version check add-on
         docker exec kodi-headless rm -rf /app/kodi/addons/service.xbmc.versioncheck || true
@@ -83,7 +83,7 @@ jobs:
               -p 8080:8080 \
               -v $(pwd)/kodi-config:/config/.kodi \
               --restart=no \
-              matthuisman/kodi:${{ matrix.kodi-tag }}
+              matthuisman/kodi-headless:${{ matrix.kodi-tag }}
             docker exec kodi-headless rm -rf /app/kodi/addons/service.xbmc.versioncheck || true
             sleep 5
           }
