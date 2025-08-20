@@ -35,7 +35,7 @@ jobs:
         # Create config directory
         mkdir -p kodi-config/userdata
     
-        # guisettings.xml: Enable webserver and disable authentication
+        # guisettings.xml: Enable webserver and disable authentication; use PulseAudio for audio
         cat << EOF > kodi-config/userdata/guisettings.xml
         <settings version="2">
           <setting id="services.webserver" default="true">true</setting>
@@ -47,18 +47,15 @@ jobs:
           <setting id="services.airplayvolumecontrol" default="true">true</setting>
           <setting id="services.useairplaypassword" default="true">false</setting>
           <setting id="general.addonupdates" default="true">0</setting>
-          <setting id="audiooutput.audiodevice" default="true">ALSA:default</setting>
+          <setting id="audiooutput.audiodevice" default="true">PULSE:Default</setting>
           <setting id="audiooutput.passthrough" default="true">false</setting>
         </settings>
         EOF
     
-        # advancedsettings.xml: Use null audio device for headless mode
+        # advancedsettings.xml: Remove null audio device; keep loglevel for debugging
         cat << EOF > kodi-config/userdata/advancedsettings.xml
         <advancedsettings>
           <loglevel>2</loglevel>
-          <audio>
-            <device>null</device>
-          </audio>
         </advancedsettings>
         EOF
     
@@ -73,7 +70,7 @@ jobs:
           --restart=no \
           fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
     
-        # Remove version check add-on if present (may not be needed, but harmless)
+        # Remove version check add-on if present
         docker exec kodi-headless rm -rf /usr/share/kodi/addons/service.xbmc.versioncheck || true
     
         # Wait for JSON-RPC to respond
@@ -102,6 +99,8 @@ jobs:
         if ! curl -s -f -X POST -H "Content-Type: application/json" --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q "pong"; then
           echo "Kodi failed to start after retries"
           docker logs kodi-headless
+          # Add for debugging: Output Kodi log
+          docker exec kodi-headless cat /data/.kodi/temp/kodi.log || true
           exit 1
         fi
     
