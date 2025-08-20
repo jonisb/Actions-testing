@@ -27,20 +27,8 @@ jobs:
         pip install -r requirements.txt
         pip install pytest requests
 
-    - name: Install Docker and resolve containerd conflicts
-      run: |
-        # Clean up conflicting containerd packages
-        sudo apt-get update
-        sudo apt-get remove -y containerd containerd.io || true
-        sudo apt-get autoremove -y
-        sudo apt-get clean
-        # Install Docker
-        sudo apt-get update
-        sudo apt-get install -y docker.io
-        sudo systemctl start docker
-        sudo systemctl enable docker
-        # Verify Docker is running
-        docker --version
+    - name: Verify Docker is installed
+      run: docker --version    
 
     - name: Prepare Kodi config and run headless Docker
       run: |
