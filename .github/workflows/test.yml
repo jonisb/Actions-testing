@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        kodi-tag: ['18.9-leia', '19.5-matrix', '20.5-nexus', '21.0-omega']  # Test multiple Kodi versions
+        kodi-tag: [leia, matrix, nexus, omega] # Revert to simple codenames    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
