@@ -30,83 +30,83 @@ jobs:
     - name: Verify Docker is installed
       run: docker --version    
 
-- name: Prepare Kodi config and run headless Docker
-  run: |
-    # Create config directory (unchanged)
-    mkdir -p kodi-config/userdata
+		- name: Prepare Kodi config and run headless Docker
+			run: |
+				# Create config directory (unchanged)
+				mkdir -p kodi-config/userdata
     
-    # guisettings.xml: Enable webserver and disable authentication (unchanged)
-    cat << EOF > kodi-config/userdata/guisettings.xml
-    <settings version="2">
-      <setting id="services.webserver" default="true">true</setting>
-      <setting id="services.webserverport" default="true">8080</setting>
-      <setting id="services.webserverauthentication" default="true">false</setting>
-      <setting id="services.webskin" default="true">webinterface.default</setting>
-      <setting id="services.zeroconf" default="true">true</setting>
-      <setting id="services.airplay" default="true">false</setting>
-      <setting id="services.airplayvolumecontrol" default="true">true</setting>
-      <setting id="services.useairplaypassword" default="true">false</setting>
-      <setting id="general.addonupdates" default="true">0</setting>
-      <setting id="audiooutput.audiodevice" default="true">ALSA:default</setting>
-      <setting id="audiooutput.passthrough" default="true">false</setting>
-    </settings>
-    EOF
+				# guisettings.xml: Enable webserver and disable authentication (unchanged)
+				cat << EOF > kodi-config/userdata/guisettings.xml
+				<settings version="2">
+					<setting id="services.webserver" default="true">true</setting>
+					<setting id="services.webserverport" default="true">8080</setting>
+					<setting id="services.webserverauthentication" default="true">false</setting>
+					<setting id="services.webskin" default="true">webinterface.default</setting>
+					<setting id="services.zeroconf" default="true">true</setting>
+					<setting id="services.airplay" default="true">false</setting>
+					<setting id="services.airplayvolumecontrol" default="true">true</setting>
+					<setting id="services.useairplaypassword" default="true">false</setting>
+					<setting id="general.addonupdates" default="true">0</setting>
+					<setting id="audiooutput.audiodevice" default="true">ALSA:default</setting>
+					<setting id="audiooutput.passthrough" default="true">false</setting>
+				</settings>
+				EOF
     
-    # advancedsettings.xml: Use null audio device for headless mode (unchanged)
-    cat << EOF > kodi-config/userdata/advancedsettings.xml
-    <advancedsettings>
-      <loglevel>2</loglevel>
-      <audio>
-        <device>null</device>
-      </audio>
-    </advancedsettings>
-    EOF
+				# advancedsettings.xml: Use null audio device for headless mode (unchanged)
+				cat << EOF > kodi-config/userdata/advancedsettings.xml
+				<advancedsettings>
+					<loglevel>2</loglevel>
+					<audio>
+						<device>null</device>
+					</audio>
+				</advancedsettings>
+				EOF
     
-    # Pull and run the new headless Kodi Docker image
-    docker pull fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
-    docker run -d --name kodi-headless \
-      -p 8080:8080 \
-      -e PUID=$(id -u) \
-      -e PGID=$(id -g) \
-      -e TZ=UTC  # Adjust to your timezone if needed
-      -v $(pwd)/kodi-config:/data/.kodi/userdata  # Adjusted mount; confirm path in image README if issues
-      --restart=no \
-      fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
+				# Pull and run the new headless Kodi Docker image
+				docker pull fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
+				docker run -d --name kodi-headless \
+					-p 8080:8080 \
+					-e PUID=$(id -u) \
+					-e PGID=$(id -g) \
+					-e TZ=UTC  # Adjust to your timezone if needed
+					-v $(pwd)/kodi-config:/data/.kodi/userdata  # Adjusted mount; confirm path in image README if issues
+					--restart=no \
+					fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
     
-    # Remove version check add-on if present (may not be needed, but harmless)
-    docker exec kodi-headless rm -rf /opt/kodi/share/kodi/addons/service.xbmc.versioncheck || true
+				# Remove version check add-on if present (may not be needed, but harmless)
+				docker exec kodi-headless rm -rf /opt/kodi/share/kodi/addons/service.xbmc.versioncheck || true
     
-    # Wait for JSON-RPC to respond (unchanged, but consider increasing retries if startup is slower)
-    for attempt in {1..3}; do
-      timeout 120 bash -c "until curl -s -f -X POST -H \"Content-Type: application/json\" --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q \"pong\"; do
-        echo \"Waiting for Kodi to start (attempt $attempt)...\"
-        docker logs kodi-headless --tail 20
-        sleep 10
-      done" && { echo "Kodi is ready!"; break; } || {
-        echo "Restarting Kodi container..."
-        docker stop kodi-headless || true
-        docker rm kodi-headless || true
-        docker run -d --name kodi-headless \
-          -p 8080:8080 \
-          -e PUID=$(id -u) \
-          -e PGID=$(id -g) \
-          -e TZ=UTC \
-          -v $(pwd)/kodi-config:/data/.kodi/userdata \
-          --restart=no \
-          fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
-        docker exec kodi-headless rm -rf /opt/kodi/share/kodi/addons/service.xbmc.versioncheck || true
-        sleep 5
-      }
-    done
+				# Wait for JSON-RPC to respond (unchanged, but consider increasing retries if startup is slower)
+				for attempt in {1..3}; do
+					timeout 120 bash -c "until curl -s -f -X POST -H \"Content-Type: application/json\" --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q \"pong\"; do
+						echo \"Waiting for Kodi to start (attempt $attempt)...\"
+						docker logs kodi-headless --tail 20
+						sleep 10
+					done" && { echo "Kodi is ready!"; break; } || {
+						echo "Restarting Kodi container..."
+						docker stop kodi-headless || true
+						docker rm kodi-headless || true
+						docker run -d --name kodi-headless \
+							-p 8080:8080 \
+							-e PUID=$(id -u) \
+							-e PGID=$(id -g) \
+							-e TZ=UTC \
+							-v $(pwd)/kodi-config:/data/.kodi/userdata \
+							--restart=no \
+							fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
+						docker exec kodi-headless rm -rf /opt/kodi/share/kodi/addons/service.xbmc.versioncheck || true
+						sleep 5
+					}
+				done
     
-    if ! curl -s -f -X POST -H "Content-Type: application/json" --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q "pong"; then
-      echo "Kodi failed to start after retries"
-      docker logs kodi-headless
-      exit 1
-    fi
+				if ! curl -s -f -X POST -H "Content-Type: application/json" --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q "pong"; then
+					echo "Kodi failed to start after retries"
+					docker logs kodi-headless
+					exit 1
+				fi
     
-    # Extra delay for full initialization (unchanged)
-    sleep 45
+				# Extra delay for full initialization (unchanged)
+				sleep 45
 
     - name: Run tests
       run: |
