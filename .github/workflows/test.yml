@@ -90,11 +90,15 @@ jobs:
         docker cp kodi-config/userdata/advancedsettings.xml kodi-headless:/data/.kodi/userdata/advancedsettings.xml
         # Wait for JSON-RPC
         for attempt in {1..5}; do
-            timeout 60 bash -c "until curl -s -f -X POST -H \"Content-Type: application/json\" --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q \"pong\"; do
-                echo \"Waiting for Kodi to start (attempt $attempt)...\""
+            timeout 60 bash -c "until curl -s -f -X POST -H 'Content-Type: application/json' --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q 'pong'; do
+                echo \"Waiting for Kodi to start (attempt $attempt)...\"
                 docker logs kodi-headless --tail 20
                 sleep 5
-            done" && { echo "Kodi is ready!"; break; } || {
+            done"
+            if [ $? -eq 0 ]; then
+                echo "Kodi is ready!"
+                break
+            else
                 echo "Restarting Kodi container..."
                 docker stop kodi-headless || true
                 docker rm kodi-headless || true
@@ -111,10 +115,9 @@ jobs:
                     -e PULSE_SERVER=127.0.0.1 \
                     fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
                 docker exec kodi-headless rm -rf /usr/share/kodi/addons/service.xbmc.versioncheck || true
-                # Overwrite advancedsettings.xml to remove SQL config
                 docker cp kodi-config/userdata/advancedsettings.xml kodi-headless:/data/.kodi/userdata/advancedsettings.xml
                 sleep 5
-            }
+            fi
         done
         
         if ! curl -s -f -X POST -H "Content-Type: application/json" --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q "pong"; then
