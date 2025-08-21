@@ -22,46 +22,25 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest requests
 
-      - name: Verify Docker is installed
+      - name: Verify Docker
         run: docker --version
 
-      - name: Prepare Kodi config and run headless Docker
+      - name: Prepare PulseAudio and config volume
         run: |
           set -euxo pipefail
-          # Install PulseAudio for dummy audio
           sudo apt-get update
           sudo apt-get install -y pulseaudio
           pulseaudio --start --exit-idle-time=-1
           export PULSE_SERVER=127.0.0.1
-
-          # Clean previous config (if any) and create correct Kodi userdata path
           rm -rf kodi-config
           mkdir -p kodi-config/.kodi/userdata
-
-          # guisettings.xml: Enable webserver, disable authentication
-          cat > kodi-config/.kodi/userdata/guisettings.xml <<'EOF'
-          <settings version="2">
-            <setting id="services.webserver" default="true">true</setting>
-            <setting id="services.webserverport" default="true">8080</setting>
-            <setting id="services.webserverauthentication" default="true">false</setting>
-            <setting id="services.webskin" default="true">webinterface.default</setting>
-            <setting id="services.zeroconf" default="true">false</setting>
-            <setting id="services.airplay" default="true">false</setting>
-            <setting id="services.airplayvolumecontrol" default="true">true</setting>
-            <setting id="services.useairplaypassword" default="true">false</setting>
-            <setting id="general.addonupdates" default="true">0</setting>
-            <setting id="audiooutput.audiodevice">PULSE:Default</setting>
-          </settings>
-          EOF
-
-          # advancedsettings.xml: Log level + headless flag only (avoid MySQL noise)
-            # (If you want MySQL for tests, add it explicitly.)
+          # Only advancedsettings.xml is safe to drop in early (Kodi will merge/keep)
           cat > kodi-config/.kodi/userdata/advancedsettings.xml <<'EOF'
           <advancedsettings>
             <loglevel>2</loglevel>
@@ -71,9 +50,59 @@ jobs:
           </advancedsettings>
           EOF
 
-          # Pull and run container
+      - name: First (initializing) Kodi start
+        run: |
+          set -euxo pipefail
+          export PULSE_SERVER=127.0.0.1
           docker pull fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
-          docker run -d --name kodi-headless \
+          docker run -d --name kodi-init \
+            -p 5900:5900 \
+            -e PUID=$(id -u) \
+            -e PGID=$(id -g) \
+            -e TZ=UTC \
+            -e PULSE_SERVER=127.0.0.1 \
+            -v "$(pwd)/kodi-config:/data" \
+            fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
+
+          echo "Waiting for Kodi to generate guisettings.xml..."
+          timeout 60 bash -c 'until [ -s "kodi-config/.kodi/userdata/guisettings.xml" ]; do sleep 2; done'
+          echo "Generated guisettings.xml size:"
+          ls -l kodi-config/.kodi/userdata/guisettings.xml
+          echo "Stopping initialization container..."
+          docker stop kodi-init
+          docker rm kodi-init
+
+      - name: Patch guisettings.xml to enable web server
+        run: |
+          set -euxo pipefail
+          GS="kodi-config/.kodi/userdata/guisettings.xml"
+
+          if ! grep -q 'services.webserver' "$GS"; then
+            echo "Unexpected: services.webserver setting not found; showing head:"
+            head -n 40 "$GS"
+          fi
+
+          # Use sed to toggle the needed settings
+          sed -i -E 's#(<setting id="services.webserver"[^>]*>)(true|false)(</setting>)#\1true\3#' "$GS"
+          sed -i -E 's#(<setting id="services.webserverauthentication"[^>]*>)(true|false)(</setting>)#\1false\3#' "$GS"
+          sed -i -E 's#(<setting id="services.webserverport"[^>]*>)[0-9]+(</setting>)#\18080\2#' "$GS"
+          # Ensure username/password do not force auth; Kodi treats blank password + auth=false fine.
+          if grep -q 'services.webserverusername' "$GS"; then
+            sed -i -E 's#(<setting id="services.webserverusername"[^>]*>).*?(</setting>)#\1kodi\2#' "$GS" || true
+          fi
+            # Leave username (Kodi sometimes requires a value) but disable auth => ignored.
+          if grep -q 'services.webserverpassword' "$GS"; then
+            sed -i -E 's#(<setting id="services.webserverpassword"[^>]*)/>#\1 />#' "$GS" || true
+          fi
+
+          echo "Patched webserver lines:"
+          grep -i -E 'webserver' "$GS"
+
+      - name: Second (runtime) Kodi start with patched settings
+        run: |
+          set -euxo pipefail
+          export PULSE_SERVER=127.0.0.1
+          docker run -d --name kodi-runtime \
             -p 8080:8080 \
             -p 8000:8000 \
             -p 5900:5900 \
@@ -86,43 +115,49 @@ jobs:
             -v "$(pwd)/kodi-config:/data" \
             fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
 
-          # Remove version check add-on (optional)
-            # (May not exist in all tags; ignore failure)
-          docker exec kodi-headless rm -rf /usr/share/kodi/addons/service.xbmc.versioncheck || true
+          echo "Waiting for port 8080 to open (web server)..."
+          (
+            for i in {1..60}; do
+              if docker exec kodi-runtime sh -c 'ss -ltn 2>/dev/null | grep -q ":8080 "'; then
+                echo "Port 8080 is listening."
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "Port 8080 never opened within 120s." >&2
+            docker logs kodi-runtime --tail 120 || true
+            echo "Kodi log (if exists):"
+            docker exec kodi-runtime sh -c 'tail -n 200 /data/.kodi/temp/kodi.log || ls -l /data/.kodi/temp || true'
+            exit 1
+          )
 
-          echo "Waiting for Kodi JSON-RPC (up to 180s)..."
-          start_ts=$(date +%s)
-          attempt=0
+          echo "Waiting for JSON-RPC pong..."
+          start=$(date +%s)
           while true; do
-            # Basic ping; for stricter check use jq (uncomment after installing jq)
-            # docker exec kodi-headless apt-get update && docker exec kodi-headless apt-get install -y jq (or install on host)
             if curl -sf -H 'Content-Type: application/json' \
-                 --data '{"jsonrpc":"2.0","method":"JSONRPC.Ping","id":1}' \
-                 http://127.0.0.1:8080/jsonrpc | grep -q '"pong"'; then
-              echo "Kodi JSON-RPC is responding."
+               --data '{"jsonrpc":"2.0","method":"JSONRPC.Ping","id":1}' \
+               http://127.0.0.1:8080/jsonrpc | grep -q '"pong"'; then
+              echo "JSON-RPC ready."
               break
             fi
-            attempt=$((attempt+1))
-            elapsed=$(( $(date +%s) - start_ts ))
-            if (( elapsed > 180 )); then
-              echo "ERROR: Kodi did not answer JSON-RPC within ${elapsed}s."
-              echo "Last 80 container log lines:"
-              docker logs kodi-headless --tail 80 || true
-              echo "Listing /data/.kodi/userdata:"
-              docker exec kodi-headless ls -al /data/.kodi/userdata || true
-              echo "Show guisettings snippet (webserver tags):"
-              docker exec kodi-headless grep -i -E 'webserver' /data/.kodi/userdata/guisettings.xml || true
-              echo "Network listeners:"
-              docker exec kodi-headless sh -c 'ss -ltn 2>/dev/null | grep 8080 || netstat -ltn | grep 8080 || true'
+            elapsed=$(( $(date +%s) - start ))
+            if (( elapsed > 60 )); then
+              echo "JSON-RPC did not respond within 60s after port open."
+              docker logs kodi-runtime --tail 120 || true
+              echo "Kodi log excerpt:"
+              docker exec kodi-runtime sh -c 'tail -n 200 /data/.kodi/temp/kodi.log || true'
               exit 1
             fi
-            echo "Waiting (attempt $attempt, ${elapsed}s elapsed)..."
-            docker logs kodi-headless --tail 20 || true
-            sleep 5
+            sleep 2
           done
 
-          # Brief extra delay for subsystems
-          sleep 10
+          # Short grace period
+          sleep 5
+
+      - name: Show Kodi log (debug)
+        run: |
+          set -e
+          docker exec kodi-runtime sh -c 'echo "---- kodi.log tail ----"; tail -n 60 /data/.kodi/temp/kodi.log || echo "No kodi.log yet"'
 
       - name: Run tests
         run: pytest tests/
@@ -130,5 +165,5 @@ jobs:
       - name: Stop Kodi (cleanup)
         if: always()
         run: |
-          docker stop kodi-headless || true
-          docker rm kodi-headless || true
+          docker stop kodi-runtime 2>/dev/null || true
+          docker rm kodi-runtime 2>/dev/null || true
