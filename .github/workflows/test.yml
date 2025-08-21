@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        kodi-tag: [Matrix, Nexus, Omega]
+        kodi-tag: ['18.9', '19.4', '20.0', '21.0']
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
