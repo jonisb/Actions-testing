@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        kodi-tag: ['18.9', '19.4', '20.0', '21.0']
+        kodi-tag: [leia, matrix, nexus, omega]  # Use release names
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -29,12 +29,11 @@ jobs:
 
     - name: Verify Docker is installed
       run: docker --version    
-
     - name: Prepare Kodi config and run headless Docker
       run: |
         # Create config directory
         mkdir -p kodi-config/userdata
-    
+        
         # guisettings.xml: Enable webserver and disable authentication (audio defaults to dummy in image)
         cat << EOF > kodi-config/userdata/guisettings.xml
         <settings version="2">
@@ -49,7 +48,7 @@ jobs:
           <setting id="general.addonupdates" default="true">0</setting>
         </settings>
         EOF
-    
+        
         # advancedsettings.xml: Log level; add headless mode
         cat << EOF > kodi-config/userdata/advancedsettings.xml
         <advancedsettings>
@@ -59,9 +58,9 @@ jobs:
           </video>
         </advancedsettings>
         EOF
-    
+        
         # Pull and run pure headless Kodi
-        docker pull blakadder/kodi-headless:${{ matrix.kodi-tag }}  # e.g., Nexus -> 20.0; adjust matrix tags
+        docker pull blakadder/kodi-headless:${{ matrix.kodi-tag }}
         docker run -d --name kodi-headless \
           -p 8080:8080 \
           -e PUID=$(id -u) \
@@ -70,10 +69,10 @@ jobs:
           -v $(pwd)/kodi-config:/config/.kodi \
           --restart=no \
           blakadder/kodi-headless:${{ matrix.kodi-tag }}
-    
+        
         # Remove version check add-on
         docker exec kodi-headless rm -rf /usr/share/kodi/addons/service.xbmc.versioncheck || true
-    
+        
         # Wait for JSON-RPC (reduce timeout as startup is faster)
         for attempt in {1..5}; do
           timeout 60 bash -c "until curl -s -f -X POST -H \"Content-Type: application/json\" --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q \"pong\"; do
@@ -96,14 +95,14 @@ jobs:
             sleep 5
           }
         done
-    
+        
         if ! curl -s -f -X POST -H "Content-Type: application/json" --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q "pong"; then
           echo "Kodi failed to start after retries"
           docker logs kodi-headless
           docker exec kodi-headless cat /config/.kodi/temp/kodi.log || true
           exit 1
         fi
-    
+        
         # Extra delay
         sleep 30
 
