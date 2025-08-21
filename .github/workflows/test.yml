@@ -155,3 +155,16 @@ jobs:
           fi
 
           sleep 5
+
+      - name: Show Kodi log (tail)
+        run: |
+          docker exec kodi-runtime sh -c 'echo "---- kodi.log tail ----"; tail -n 60 /data/.kodi/temp/kodi.log || echo "No kodi.log yet"'
+
+      - name: Run tests
+        run: pytest tests/
+
+      - name: Stop Kodi (cleanup)
+        if: always()
+        run: |
+          docker stop kodi-runtime 2>/dev/null || true
+          docker rm kodi-runtime 2>/dev/null || true
