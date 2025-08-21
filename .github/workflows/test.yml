@@ -1,4 +1,109 @@
-# ... previous steps unchanged ...
+name: Test jsbc.KodiLib
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        kodi-tag: [Matrix, Nexus, Omega]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest requests
+
+      - name: Verify Docker
+        run: docker --version
+
+      - name: Prepare PulseAudio and config volume
+        run: |
+            set -euxo pipefail
+            sudo apt-get update
+            sudo apt-get install -y pulseaudio
+            pulseaudio --start --exit-idle-time=-1
+            export PULSE_SERVER=127.0.0.1
+            rm -rf kodi-config
+            mkdir -p kodi-config/.kodi/userdata
+            cat > kodi-config/.kodi/userdata/advancedsettings.xml <<'EOF'
+            <advancedsettings>
+              <loglevel>2</loglevel>
+              <video>
+                <headless>true</headless>
+              </video>
+            </advancedsettings>
+            EOF
+
+      - name: First (initializing) Kodi start
+        run: |
+          set -euxo pipefail
+          export PULSE_SERVER=127.0.0.1
+          docker pull fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
+          docker run -d --name kodi-init \
+            -p 5900:5900 \
+            -e PUID=$(id -u) \
+            -e PGID=$(id -g) \
+            -e TZ=UTC \
+            -e PULSE_SERVER=127.0.0.1 \
+            -v "$(pwd)/kodi-config:/data" \
+            fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
+
+          echo "Waiting for Kodi to generate guisettings.xml..."
+          timeout 60 bash -c 'until [ -s "kodi-config/.kodi/userdata/guisettings.xml" ]; do sleep 2; done'
+          # Small grace to ensure Kodi finished its first-write cycle
+          sleep 5
+          echo "Generated guisettings.xml:"
+          ls -l kodi-config/.kodi/userdata/guisettings.xml || true
+          echo "Stopping initialization container..."
+          docker stop kodi-init
+          docker rm kodi-init
+
+      - name: Adjust ownership and patch guisettings.xml
+        run: |
+          set -euxo pipefail
+          GS="kodi-config/.kodi/userdata/guisettings.xml"
+          echo "Before chown:"
+          ls -l "$GS" || true
+          # Take ownership so sed can edit
+          sudo chown -R $(id -u):$(id -g) kodi-config/.kodi/userdata
+          echo "After chown:"
+          ls -l "$GS" || true
+
+          # Sanity check presence
+            grep -q 'services.webserver' "$GS" || { echo "services.webserver not found in guisettings.xml"; head -n 60 "$GS"; }
+
+          # Patch values
+          sed -i -E 's#(<setting id="services.webserver"[^>]*>)(true|false)(</setting>)#\1true\3#' "$GS"
+          sed -i -E 's#(<setting id="services.webserverauthentication"[^>]*>)(true|false)(</setting>)#\1false\3#' "$GS"
+          sed -i -E 's#(<setting id="services.webserverport"[^>]*>)[0-9]+(</setting>)#\18080\2#' "$GS"
+
+          # Keep username but disable auth => ignored
+          if grep -q 'services.webserverusername' "$GS"; then
+            sed -i -E 's#(<setting id="services.webserverusername"[^>]*>).*?(</setting>)#\1kodi\2#' "$GS" || true
+          fi
+          # Ensure password node self-closing form remains (auth disabled)
+          if grep -q 'services.webserverpassword' "$GS"; then
+            # No change needed, but normalize spacing
+            sed -i -E 's#(<setting id="services.webserverpassword"[^>]*)/>#\1 />#' "$GS" || true
+          fi
+
+          echo "Patched webserver lines:"
+          grep -i -E 'webserver' "$GS" || true
 
       - name: Second (runtime) Kodi start and readiness (log-based)
         run: |
