@@ -83,7 +83,7 @@ jobs:
           -e KODI_DB_USER=kodi \
           -e KODI_DB_PASS=kodi \
           -v $(pwd)/kodi-config:/data \
-          --device /dev/snd:/dev/snd \
+           \
           -e PULSE_SERVER=127.0.0.1 \
           fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
         
@@ -113,7 +113,7 @@ jobs:
               -e KODI_DB_USER=kodi \
               -e KODI_DB_PASS=kodi \
               -v $(pwd)/kodi-config:/data \
-              --device /dev/snd:/dev/snd \
+               \
               -e PULSE_SERVER=127.0.0.1 \
               fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
             docker exec kodi-headless rm -rf /usr/share/kodi/addons/service.xbmc.versioncheck || true
