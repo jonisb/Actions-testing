@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        kodi-tag: [Leia, Matrix, Nexus, Omega]  # Supported tags
+        kodi-tag: [Matrix, Nexus, Omega]  # Supported tags
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
