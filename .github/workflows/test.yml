@@ -79,9 +79,6 @@ jobs:
           -e PUID=$(id -u) \
           -e PGID=$(id -g) \
           -e TZ=UTC \
-          -e KODI_DB_HOST=localhost \
-          -e KODI_DB_USER=kodi \
-          -e KODI_DB_PASS=kodi \
           -v $(pwd)/kodi-config:/data \
            \
           -e PULSE_SERVER=127.0.0.1 \
@@ -109,9 +106,6 @@ jobs:
               -e PUID=$(id -u) \
               -e PGID=$(id -g) \
               -e TZ=UTC \
-              -e KODI_DB_HOST=localhost \
-              -e KODI_DB_USER=kodi \
-              -e KODI_DB_PASS=kodi \
               -v $(pwd)/kodi-config:/data \
                \
               -e PULSE_SERVER=127.0.0.1 \
