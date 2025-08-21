@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        kodi-tag: [Matrix, Nexus, Omega]  # Supported tags
+        kodi-tag: [Leia, Matrix, Nexus, Omega]  # Supported tags
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -86,33 +86,35 @@ jobs:
         
         # Remove version check add-on
         docker exec kodi-headless rm -rf /usr/share/kodi/addons/service.xbmc.versioncheck || true
-        
+        # Overwrite advancedsettings.xml to remove SQL config
+        docker cp kodi-config/userdata/advancedsettings.xml kodi-headless:/data/.kodi/userdata/advancedsettings.xml
         # Wait for JSON-RPC
         for attempt in {1..5}; do
-          timeout 60 bash -c "until curl -s -f -X POST -H \"Content-Type: application/json\" --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q \"pong\"; do
-            echo \"Waiting for Kodi to start (attempt $attempt)...\"
-            docker logs kodi-headless --tail 20
-            sleep 5
-          done" && { echo "Kodi is ready!"; break; } || {
-            echo "Restarting Kodi container..."
-            docker stop kodi-headless || true
-            docker rm kodi-headless || true
-            docker run -d --name kodi-headless \
-              -p 8080:8080 \
-              -p 8000:8000 \
-              -p 5900:5900 \
-              -p 9090:9090 \
-              -p 9777:9777/udp \
-              -e PUID=$(id -u) \
-              -e PGID=$(id -g) \
-              -e TZ=UTC \
-              -v $(pwd)/kodi-config:/data \
-               \
-              -e PULSE_SERVER=127.0.0.1 \
-              fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
-            docker exec kodi-headless rm -rf /usr/share/kodi/addons/service.xbmc.versioncheck || true
-            sleep 5
-          }
+            timeout 60 bash -c "until curl -s -f -X POST -H \"Content-Type: application/json\" --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q \"pong\"; do
+                echo \"Waiting for Kodi to start (attempt $attempt)...\""
+                docker logs kodi-headless --tail 20
+                sleep 5
+            done" && { echo "Kodi is ready!"; break; } || {
+                echo "Restarting Kodi container..."
+                docker stop kodi-headless || true
+                docker rm kodi-headless || true
+                docker run -d --name kodi-headless \
+                    -p 8080:8080 \
+                    -p 8000:8000 \
+                    -p 5900:5900 \
+                    -p 9090:9090 \
+                    -p 9777:9777/udp \
+                    -e PUID=$(id -u) \
+                    -e PGID=$(id -g) \
+                    -e TZ=UTC \
+                    -v $(pwd)/kodi-config:/data \
+                    -e PULSE_SERVER=127.0.0.1 \
+                    fhriley/kodi-headless-novnc:${{ matrix.kodi-tag }}
+                docker exec kodi-headless rm -rf /usr/share/kodi/addons/service.xbmc.versioncheck || true
+                # Overwrite advancedsettings.xml to remove SQL config
+                docker cp kodi-config/userdata/advancedsettings.xml kodi-headless:/data/.kodi/userdata/advancedsettings.xml
+                sleep 5
+            }
         done
         
         if ! curl -s -f -X POST -H "Content-Type: application/json" --data '{\"jsonrpc\":\"2.0\",\"method\":\"JSONRPC.Ping\",\"id\":1}' http://localhost:8080/jsonrpc | grep -q "pong"; then
