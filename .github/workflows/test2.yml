@@ -1,0 +1,84 @@
+name: Kodi JSON-RPC Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  kodi-test:
+    runs-on: ubuntu-latest
+    steps:
+      # 1️⃣ Checkout the repository
+      - uses: actions/checkout@v4
+
+      # 2️⃣ Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 3️⃣ Install test dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      # 4️⃣ Prepare Kodi configuration for JSON-RPC over HTTP
+      - name: Prepare Kodi config
+        run: |
+          mkdir -p kodi-config/userdata
+          cat > kodi-config/userdata/guisettings.xml <<'EOF'
+          <settings version="2">
+            <setting id="services.webserver">true</setting>
+            <setting id="services.webserverport">8080</setting>
+          </settings>
+          EOF
+
+      # 5️⃣ Pull headless Kodi Docker image
+      - name: Pull Kodi Docker image
+        run: docker pull linuxserver/kodi-headless:latest
+
+      # 6️⃣ Start Kodi in headless mode
+      - name: Start Kodi
+        run: |
+          docker run -d \
+            --name kodi \
+            -p 8080:8080 \
+            -v ${{ github.workspace }}/kodi-config:/config/.kodi \
+            linuxserver/kodi-headless:latest
+
+      # 7️⃣ Wait for JSON-RPC endpoint to be responsive
+      - name: Wait for Kodi
+        run: |
+          echo "Waiting for Kodi JSON-RPC to come up..."
+          for i in $(seq 1 60); do
+            if curl -s \
+                  -H "Content-Type: application/json" \
+                  -X POST \
+                  -d '{"jsonrpc":"2.0","method":"JSONRPC.Ping","id":1}' \
+                  http://localhost:8080/jsonrpc | grep -q "pong"; then
+              echo "✅ Kodi is ready!"
+              exit 0
+            fi
+            echo "  Still not ready - sleeping 2s..." >&2
+            sleep 2
+          done
+          echo "❌ Kodi did not start in time" >&2
+          docker logs kodi >&2
+          exit 1
+
+      # 8️⃣ Run tests
+      - name: Run tests
+        env:
+          KODI_RPC_URL: http://localhost:8080/jsonrpc
+        run: |
+          pytest tests/
+
+      # 9️⃣ Tear down Kodi container
+      - name: Stop Kodi
+        if: always()
+        run: |
+          docker stop kodi || true
+          docker rm -f kodi || true
