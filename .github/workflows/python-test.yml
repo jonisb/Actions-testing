@@ -20,7 +20,14 @@ jobs:
     - name: Configure Kodi
       run: |
         mkdir -p ~/.kodi/userdata
-        cp advancedsettings.xml ~/.kodi/userdata/
+        cat <<EOF > ~/.kodi/userdata/advancedsettings.xml
+        <advancedsettings>
+          <videoplayer>
+            <usevdpau>false</usevdpau>
+            <usevaapi>false</usevaapi>
+          </videoplayer>
+        </advancedsettings>
+        EOF
     - name: Run Kodi and Test
       run: |
         xvfb-run -a kodi &
