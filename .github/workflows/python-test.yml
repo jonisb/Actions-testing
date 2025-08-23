@@ -16,7 +16,7 @@ jobs:
     - name: Install Kodi
       run: |
         sudo apt-get update
-        sudo apt-get install -y kodi
+        sudo apt-get install -y kodi vdpau-driver-all
     - name: Configure Kodi
       run: |
         mkdir -p ~/.kodi/userdata
@@ -71,6 +71,6 @@ jobs:
         EOF
     - name: Run Kodi and Test
       run: |
-        xvfb-run -a kodi &
+        xvfb-run -a kodi --audio-backend=alsa & 
         sleep 30 # Give kodi time to start
         python simple_kodi_test.py
