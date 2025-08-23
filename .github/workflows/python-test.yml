@@ -17,8 +17,12 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y kodi
+    - name: Configure Kodi
+      run: |
+        mkdir -p ~/.kodi/userdata
+        cp advancedsettings.xml ~/.kodi/userdata/
     - name: Run Kodi and Test
       run: |
         xvfb-run -a kodi &
-        sleep 10 # Give kodi time to start
+        sleep 30 # Give kodi time to start
         python simple_kodi_test.py
