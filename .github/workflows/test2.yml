@@ -18,31 +18,26 @@ jobs:
         with:
           python-version: '3.12'
 
-      # 3️⃣ Install test dependencies
+      # 3️⃣ Install xmlstarlet for XML editing
+      - name: Install xmlstarlet
+        run: sudo apt-get update && sudo apt-get install -y xmlstarlet
+
+      # 4️⃣ Install test dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt || echo "No requirements.txt found, skipping..."
           pip install pytest
 
-      # 4️⃣ Prepare Kodi configuration to disable webserver authentication
+      # 5️⃣ Prepare empty Kodi config directory
       - name: Prepare Kodi config
-        run: |
-          mkdir -p kodi-config/userdata
-          cat > kodi-config/userdata/guisettings.xml <<'EOF'
-          <settings version="2">
-            <setting id="services.webserver">true</setting>
-            <setting id="services.webserverport">8080</setting>
-            <setting id="services.webserverusername">kodi</setting>
-            <setting id="services.webserverpassword"></setting>
-          </settings>
-          EOF
+        run: mkdir -p kodi-config/userdata
 
-      # 5️⃣ Pull headless Kodi Docker image
+      # 6️⃣ Pull headless Kodi Docker image
       - name: Pull Kodi Docker image
         run: docker pull linuxserver/kodi-headless:latest
 
-      # 6️⃣ Start Kodi in headless mode
+      # 7️⃣ Start Kodi in headless mode (first run to generate defaults)
       - name: Start Kodi
         run: |
           docker run -d \
@@ -54,7 +49,68 @@ jobs:
             -v ${{ github.workspace }}/kodi-config:/config/.kodi \
             linuxserver/kodi-headless:latest
 
-      # 7️⃣ Wait for JSON-RPC endpoint to be responsive (no auth)
+      # 8️⃣ Wait for guisettings.xml to be generated
+      - name: Wait for config generation
+        run: |
+          echo "Waiting for guisettings.xml to be generated..."
+          for i in $(seq 1 60); do
+            if [ -f kodi-config/userdata/guisettings.xml ]; then
+              echo "✅ Config generated!"
+              exit 0
+            fi
+            echo "  Still not ready - sleeping 2s..." >&2
+            sleep 2
+          done
+          echo "❌ Config did not generate in time" >&2
+          docker logs kodi >&2
+          exit 1
+
+      # 9️⃣ Stop Kodi temporarily to edit config
+      - name: Stop Kodi temporarily
+        run: docker stop kodi
+
+      # 10️⃣ Update guisettings.xml to enable webserver without auth
+      - name: Disable webserver auth
+        run: |
+          xml_file="kodi-config/userdata/guisettings.xml"
+          
+          # Enable webserver
+          if [ $(xmlstarlet sel -t -v "count(//setting[@id='services.webserver'])" "$xml_file") -eq 0 ]; then
+            xmlstarlet ed -s /settings -t elem -n setting -v true \
+              -i "//setting[last()]" -t attr -n id -v "services.webserver" "$xml_file" > tmp.xml && mv tmp.xml "$xml_file"
+          else
+            xmlstarlet ed -u "//setting[@id='services.webserver']" -v true "$xml_file" > tmp.xml && mv tmp.xml "$xml_file"
+          fi
+          
+          # Set port to 8080
+          if [ $(xmlstarlet sel -t -v "count(//setting[@id='services.webserverport'])" "$xml_file") -eq 0 ]; then
+            xmlstarlet ed -s /settings -t elem -n setting -v 8080 \
+              -i "//setting[last()]" -t attr -n id -v "services.webserverport" "$xml_file" > tmp.xml && mv tmp.xml "$xml_file"
+          else
+            xmlstarlet ed -u "//setting[@id='services.webserverport']" -v 8080 "$xml_file" > tmp.xml && mv tmp.xml "$xml_file"
+          fi
+          
+          # Disable authentication
+          if [ $(xmlstarlet sel -t -v "count(//setting[@id='services.webserverauthentication'])" "$xml_file") -eq 0 ]; then
+            xmlstarlet ed -s /settings -t elem -n setting -v false \
+              -i "//setting[last()]" -t attr -n id -v "services.webserverauthentication" "$xml_file" > tmp.xml && mv tmp.xml "$xml_file"
+          else
+            xmlstarlet ed -u "//setting[@id='services.webserverauthentication']" -v false "$xml_file" > tmp.xml && mv tmp.xml "$xml_file"
+          fi
+          
+          # Clear password (for safety)
+          if [ $(xmlstarlet sel -t -v "count(//setting[@id='services.webserverpassword'])" "$xml_file") -eq 0 ]; then
+            xmlstarlet ed -s /settings -t elem -n setting -v "" \
+              -i "//setting[last()]" -t attr -n id -v "services.webserverpassword" "$xml_file" > tmp.xml && mv tmp.xml "$xml_file"
+          else
+            xmlstarlet ed -u "//setting[@id='services.webserverpassword']" -v "" "$xml_file" > tmp.xml && mv tmp.xml "$xml_file"
+          fi
+
+      # 11️⃣ Restart Kodi with updated config
+      - name: Restart Kodi
+        run: docker start kodi
+
+      # 12️⃣ Wait for JSON-RPC endpoint to be responsive (no auth)
       - name: Wait for Kodi
         run: |
           echo "Waiting for Kodi JSON-RPC to come up..."
@@ -74,14 +130,14 @@ jobs:
           docker logs kodi >&2
           exit 1
 
-      # 8️⃣ Run tests
+      # 13️⃣ Run tests
       - name: Run tests
         env:
           KODI_RPC_URL: http://localhost:8080/jsonrpc
         run: |
           pytest tests/ --verbose
 
-      # 9️⃣ Tear down Kodi container
+      # 14️⃣ Tear down Kodi container
       - name: Stop Kodi
         if: always()
         run: |
