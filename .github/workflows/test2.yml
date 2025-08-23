@@ -22,14 +22,27 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt || echo "No requirements.txt found, skipping..."
           pip install pytest
 
-      # 4️⃣ Pull headless Kodi Docker image
+      # 4️⃣ Prepare Kodi configuration to disable webserver authentication
+      - name: Prepare Kodi config
+        run: |
+          mkdir -p kodi-config/userdata
+          cat > kodi-config/userdata/guisettings.xml <<'EOF'
+          <settings version="2">
+            <setting id="services.webserver">true</setting>
+            <setting id="services.webserverport">8080</setting>
+            <setting id="services.webserverusername">kodi</setting>
+            <setting id="services.webserverpassword"></setting>
+          </settings>
+          EOF
+
+      # 5️⃣ Pull headless Kodi Docker image
       - name: Pull Kodi Docker image
         run: docker pull linuxserver/kodi-headless:latest
 
-      # 5️⃣ Start Kodi in headless mode
+      # 6️⃣ Start Kodi in headless mode
       - name: Start Kodi
         run: |
           docker run -d \
@@ -41,12 +54,12 @@ jobs:
             -v ${{ github.workspace }}/kodi-config:/config/.kodi \
             linuxserver/kodi-headless:latest
 
-      # 6️⃣ Wait for JSON-RPC endpoint to be responsive (with default auth)
+      # 7️⃣ Wait for JSON-RPC endpoint to be responsive (no auth)
       - name: Wait for Kodi
         run: |
           echo "Waiting for Kodi JSON-RPC to come up..."
           for i in $(seq 1 90); do
-            if curl -s -u kodi:kodi \
+            if curl -s \
                   -H "Content-Type: application/json" \
                   -X POST \
                   -d '{"jsonrpc":"2.0","method":"JSONRPC.Ping","id":1}' \
@@ -61,14 +74,14 @@ jobs:
           docker logs kodi >&2
           exit 1
 
-      # 7️⃣ Run tests
+      # 8️⃣ Run tests
       - name: Run tests
         env:
           KODI_RPC_URL: http://localhost:8080/jsonrpc
         run: |
-          pytest tests/
+          pytest tests/ --verbose
 
-      # 8️⃣ Tear down Kodi container
+      # 9️⃣ Tear down Kodi container
       - name: Stop Kodi
         if: always()
         run: |
