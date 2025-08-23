@@ -25,24 +25,15 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
-      # 4️⃣ Prepare Kodi configuration for JSON-RPC over HTTP (disable auth)
+      # 4️⃣ Prepare empty Kodi config directory (no initial guisettings.xml; let Kodi generate it)
       - name: Prepare Kodi config
-        run: |
-          mkdir -p kodi-config/userdata
-          cat > kodi-config/userdata/guisettings.xml <<'EOF'
-          <settings version="2">
-            <setting id="services.webserver">true</setting>
-            <setting id="services.webserverport">8080</setting>
-            <setting id="services.webserverusername">kodi</setting>
-            <setting id="services.webserverpassword"></setting>
-          </settings>
-          EOF
+        run: mkdir -p kodi-config/userdata
 
       # 5️⃣ Pull headless Kodi Docker image
       - name: Pull Kodi Docker image
         run: docker pull linuxserver/kodi-headless:latest
 
-      # 6️⃣ Start Kodi in headless mode
+      # 6️⃣ Start Kodi in headless mode (first run to generate defaults)
       - name: Start Kodi
         run: |
           docker run -d \
@@ -54,7 +45,41 @@ jobs:
             -v ${{ github.workspace }}/kodi-config:/config/.kodi \
             linuxserver/kodi-headless:latest
 
-      # 7️⃣ Wait for JSON-RPC endpoint to be responsive
+      # 7️⃣ Wait for guisettings.xml to be generated
+      - name: Wait for config generation
+        run: |
+          echo "Waiting for guisettings.xml to be generated..."
+          for i in $(seq 1 60); do
+            if [ -f kodi-config/userdata/guisettings.xml ]; then
+              echo "✅ Config generated!"
+              exit 0
+            fi
+            echo "  Still not ready - sleeping 2s..." >&2
+            sleep 2
+          done
+          echo "❌ Config did not generate in time" >&2
+          docker logs kodi >&2
+          exit 1
+
+      # 8️⃣ Stop Kodi temporarily to edit config
+      - name: Stop Kodi temporarily
+        run: docker stop kodi
+
+      # 9️⃣ Disable webserver authentication (clear password) and confirm settings
+      - name: Disable webserver auth
+        run: |
+          # Clear password to disable auth
+          sed -i 's|<setting id="services.webserverpassword"[^>]*>.*</setting>|<setting id="services.webserverpassword"></setting>|g' kodi-config/userdata/guisettings.xml
+          # Ensure webserver enabled
+          sed -i 's|<setting id="services.webserver"[^>]*>.*</setting>|<setting id="services.webserver">true</setting>|g' kodi-config/userdata/guisettings.xml
+          # Ensure port 8080
+          sed -i 's|<setting id="services.webserverport"[^>]*>.*</setting>|<setting id="services.webserverport">8080</setting>|g' kodi-config/userdata/guisettings.xml
+
+      # 10️⃣ Restart Kodi with updated config
+      - name: Restart Kodi
+        run: docker start kodi
+
+      # 11️⃣ Wait for JSON-RPC endpoint to be responsive (no auth)
       - name: Wait for Kodi
         run: |
           echo "Waiting for Kodi JSON-RPC to come up..."
@@ -74,14 +99,14 @@ jobs:
           docker logs kodi >&2
           exit 1
 
-      # 8️⃣ Run tests
+      # 12️⃣ Run tests
       - name: Run tests
         env:
           KODI_RPC_URL: http://localhost:8080/jsonrpc
         run: |
           pytest tests/
 
-      # 9️⃣ Tear down Kodi container
+      # 13️⃣ Tear down Kodi container
       - name: Stop Kodi
         if: always()
         run: |
