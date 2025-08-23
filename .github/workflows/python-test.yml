@@ -1,0 +1,27 @@
+
+
+name: Python Kodi Test
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install .  # Installs jsbc.KodiLib
+    - name: Install Kodi
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y kodi
+    - name: Run tests with xvfb
+      run: |
+        xvfb-run -a pytest
